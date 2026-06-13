@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Landed Cost · Data Center Minerals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4F5F7;
+    --paper-2:#FBFBFC;
+    --ink:#16181D;
+    --ink-soft:#4A5160;
+    --steel:#8A929E;
+    --hair:#DDE0E6;
+    --hair-2:#E8EAEF;
+    --copper:#BC6A3C;
+    --copper-deep:#9A4F28;
+    --green:#1F7A5C;
+    --green-soft:#E4F1EC;
+    --red:#B4453A;
+    /* cost-stack segment palette */
+    --seg-material:#4A5160;
+    --seg-tariff:#BC6A3C;
+    --seg-freight:#6E8CA0;
+    --seg-fees:#B8BEC8;
+    --shadow:0 1px 2px rgba(22,24,29,.04), 0 8px 24px rgba(22,24,29,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:28px 20px 64px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:24px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:4px;
+  }
+  .title-block h1{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;
+    font-size:clamp(26px,4vw,38px);letter-spacing:-.02em;line-height:1.04;margin:0;
+  }
+  .title-block .eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--copper-deep);font-weight:500;margin-bottom:8px;
+  }
+  .title-block p{margin:8px 0 0;color:var(--ink-soft);font-size:14px;max-width:46ch}
+  .spot{
+    text-align:right;background:var(--ink);color:var(--paper-2);
+    padding:12px 16px;border-radius:10px;min-width:188px;
+  }
+  .spot .lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .spot .val{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;margin-top:2px;letter-spacing:-.01em}
+  .spot .sub{font-size:11px;opacity:.55;margin-top:1px}
+
+  /* ---------- control bar ---------- */
+  .controls{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:14px;margin:24px 0 8px;
+  }
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--steel);font-weight:500;
+  }
+  select,input[type=number]{
+    font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);
+    background:var(--paper-2);border:1px solid var(--hair);border-radius:8px;
+    padding:9px 11px;width:100%;appearance:none;-webkit-appearance:none;
+  }
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%238A929E' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;
+  }
+  input.mono{font-family:'JetBrains Mono',monospace}
+  select:focus,input:focus{outline:2px solid var(--copper);outline-offset:1px;border-color:var(--copper)}
+
+  /* ---------- results ---------- */
+  .section-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    margin:34px 0 14px;flex-wrap:wrap;
+  }
+  .section-head h2{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;margin:0;letter-spacing:-.01em;
+  }
+  .section-head .note{font-size:12px;color:var(--steel)}
+
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{
+    background:var(--paper-2);border:1px solid var(--hair);border-radius:12px;
+    padding:16px 18px;box-shadow:var(--shadow);position:relative;
+    transition:border-color .15s ease;
+  }
+  .row.best{border-color:var(--green);border-width:1.5px}
+  .row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .rank{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--steel);
+    width:24px;flex:0 0 24px;padding-top:3px;
+  }
+  .country{display:flex;flex-direction:column;gap:2px;flex:1;min-width:140px}
+  .country .name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px}
+  .badge{
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    background:var(--green-soft);color:var(--green);padding:2px 7px;border-radius:20px;font-weight:600;
+  }
+  .badge.tariff{background:#F6E6DC;color:var(--copper-deep)}
+  .country .meta{font-size:12px;color:var(--steel)}
+  .figures{text-align:right;flex:0 0 auto}
+  .figures .total{font-family:'JetBrains Mono',monospace;font-size:21px;font-weight:600;letter-spacing:-.01em}
+  .figures .per{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);margin-top:1px}
+  .figures .delta{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:3px}
+  .delta.up{color:var(--red)} .delta.flat{color:var(--green)}
+
+  /* cost stack — the signature element */
+  .stack{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:14px;background:var(--hair-2)}
+  .stack span{height:100%;transition:width .3s ease}
+  .seg-material{background:var(--seg-material)}
+  .seg-tariff{background:var(--seg-tariff)}
+  .seg-freight{background:var(--seg-freight)}
+  .seg-fees{background:var(--seg-fees)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+  .legend span{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+  /* ---------- assumptions ---------- */
+  details.panel{
+    margin-top:30px;background:var(--paper-2);border:1px solid var(--hair);
+    border-radius:12px;overflow:hidden;
+  }
+  details.panel>summary{
+    list-style:none;cursor:pointer;padding:16px 18px;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  details.panel>summary::-webkit-details-marker{display:none}
+  details.panel>summary .chev{transition:transform .2s ease;color:var(--steel)}
+  details.panel[open]>summary .chev{transform:rotate(90deg)}
+  .panel-body{padding:0 18px 20px;border-top:1px solid var(--hair-2)}
+  .panel-body h3{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--steel);margin:20px 0 10px;font-weight:500;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{
+    text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--steel);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--hair);
+  }
+  th.num,td.num{text-align:right}
+  td{padding:5px 8px;border-bottom:1px solid var(--hair-2);vertical-align:middle}
+  td input[type=number]{padding:5px 7px;font-size:12px;text-align:right;max-width:96px;margin-left:auto;display:block}
+  td .toggle{cursor:pointer}
+  tr.off{opacity:.4}
+  .fx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+  .fx-cell label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft)}
+
+  .caveat{
+    margin-top:22px;font-size:12.5px;line-height:1.6;color:var(--ink-soft);
+    background:#FAF6F2;border-left:3px solid var(--copper);padding:14px 16px;border-radius:0 8px 8px 0;
+  }
+  .caveat strong{color:var(--copper-deep)}
+  footer{margin-top:28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--steel);text-align:center}
+
+  @media (max-width:560px){
+    .figures{text-align:left;width:100%}
+    .row-top{flex-direction:column}
+    .rank{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Landed-cost engine · v1</div>
+      <h1>Data Center Minerals<br>Sourcing Comparison</h1>
+      <p>Compare the all-in landed cost of a construction mineral across source countries — base price, tariffs, freight and fees — normalized to one currency.</p>
+    </div>
+    <div class="spot">
+      <div class="lbl">Benchmark spot</div>
+      <div class="val mono" id="spotDisplay">$13,500</div>
+      <div class="sub" id="spotSub">Copper · USD / tonne</div>
+    </div>
+  </header>
+
+  <!-- primary controls -->
+  <div class="controls">
+    <div class="field">
+      <label for="mineral">Mineral</label>
+      <select id="mineral"></select>
+    </div>
+    <div class="field">
+      <label for="form">Product form</label>
+      <select id="form"></select>
+    </div>
+    <div class="field">
+      <label for="destination">Country of operations</label>
+      <select id="destination"></select>
+    </div>
+    <div class="field">
+      <label for="currency">Normalize to</label>
+      <select id="currency"></select>
+    </div>
+    <div class="field">
+      <label for="quantity">Quantity (tonnes)</label>
+      <input type="number" class="mono" id="quantity" value="100" min="0.1" step="1">
+    </div>
+  </div>
+
+  <!-- results -->
+  <div class="section-head">
+    <h2>Landed cost by source country</h2>
+    <span class="note" id="rankNote">Ranked cheapest → most expensive</span>
+  </div>
+  <div class="rows" id="rows"></div>
+
+  <!-- assumptions -->
+  <details class="panel" id="assumPanel">
+    <summary>Assumptions &amp; per-country inputs <span class="chev">›</span></summary>
+    <div class="panel-body">
+      <h3>Global assumptions</h3>
+      <div class="controls" style="margin:0 0 4px">
+        <div class="field">
+          <label for="spotInput">Spot price (USD / tonne)</label>
+          <input type="number" class="mono" id="spotInput" step="50">
+        </div>
+        <div class="field">
+          <label for="feesInput">Insurance + handling (% of cargo)</label>
+          <input type="number" class="mono" id="feesInput" value="2" step="0.25" min="0">
+        </div>
+      </div>
+
+      <h3>Source countries — premium, tariff &amp; freight</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Source</th>
+            <th class="num">Premium %</th>
+            <th class="num">Tariff %</th>
+            <th class="num">Freight $/t</th>
+          </tr>
+        </thead>
+        <tbody id="countryTable"></tbody>
+      </table>
+
+      <h3>FX rates (units per 1 USD)</h3>
+      <div class="fx-grid" id="fxGrid"></div>
+
+      <div class="caveat">
+        <strong>How tariffs are modeled.</strong> Defaults reflect US import policy under the June 2026 Section&nbsp;232 proclamation: 50% on semi-finished copper (wire, rod, tube, sheet) and 25% on derivatives (cable, connectors), applied to full customs value; refined cathode / ore is currently exempt pending the Commerce review due 30&nbsp;Jun&nbsp;2026. Preferential partners (EU, UK, Japan, Korea) are capped near 15%; USMCA goods from Canada/Mexico carry a ~15% effective floor on non-US content. If your country of operations is not the US, treat tariff cells as editable placeholders. Every figure here is an editable estimate, not a quote.
+      </div>
+    </div>
+  </details>
+
+  <footer>Estimates only · spot, FX &amp; tariff defaults approx. June 2026 · adjust all inputs to your contracts</footer>
+</div>
+
+<script>
+//---------------------------------------------------------------- data
+const MINERALS = {
+  copper:   {name:'Copper',            spot:13500},
+  aluminum: {name:'Aluminum',          spot:2950},
+  steel:    {name:'Steel (hot-rolled)',spot:800},
+  nickel:   {name:'Nickel',            spot:16000},
+  lithium:  {name:'Lithium carbonate', spot:12000},
+  custom:   {name:'Custom mineral',    spot:5000},
+};
+// product form -> baseline Section 232 ad-valorem rate (US destination)
+const FORMS = {
+  cathode:{name:'Refined / cathode / ore', s232:0},
+  semi:   {name:'Semi-finished (wire, rod, tube, sheet)', s232:50},
+  deriv:  {name:'Derivative (cable, connectors)', s232:25},
+};
+// tariffType: domestic | usmca | preferential | standard
+const COUNTRIES = [
+  {id:'us', name:'United States', premium:1.5, freight:25, type:'domestic'},
+  {id:'cl', name:'Chile',         premium:0,   freight:55, type:'standard'},
+  {id:'pe', name:'Peru',          premium:0.5, freight:58, type:'standard'},
+  {id:'cn', name:'China',         premium:2,   freight:70, type:'standard'},
+  {id:'cd', name:'DR Congo',      premium:1,   freight:88, type:'standard'},
+  {id:'mx', name:'Mexico',        premium:1,   freight:35, type:'usmca'},
+  {id:'ca', name:'Canada',        premium:1,   freight:30, type:'usmca'},
+  {id:'zm', name:'Zambia',        premium:1,   freight:92, type:'standard'},
+  {id:'au', name:'Australia',     premium:1,   freight:75, type:'standard'},
+  {id:'de', name:'Germany (EU)',  premium:2.5, freight:60, type:'preferential'},
+  {id:'kr', name:'South Korea',   premium:2,   freight:65, type:'preferential'},
+  {id:'jp', name:'Japan',         premium:2.5, freight:65, type:'preferential'},
+];
+const FX = { // units per 1 USD (approx. Jun 2026, editable)
+  USD:1, EUR:0.88, GBP:0.75, JPY:160, CNY:7.15, CAD:1.37,
+  AUD:1.42, CLP:950, KRW:1460, MXN:18.0, INR:87, CHF:0.80,
+};
+
+//---------------------------------------------------------------- state
+const state = {
+  mineral:'copper',
+  form:'semi',
+  destination:'us',
+  currency:'USD',
+  quantity:100,
+  feesPct:2,
+  spot:MINERALS.copper.spot,
+  countries:{},   // id -> {include, premium, tariff(null=auto), freight}
+  fx:Object.assign({},FX),
+};
+COUNTRIES.forEach(c=>{
+  state.countries[c.id]={include:true, premium:c.premium, tariff:null, freight:c.freight};
+});
+
+//---------------------------------------------------------------- tariff logic
+function autoTariff(country){
+  const base = FORMS[state.form].s232;
+  // domestic = sourcing from the same country you operate in -> no import tariff
+  if(country.id===state.destination) return 0;
+  if(country.type==='domestic') return 0;
+  if(base===0) return 0;
+  if(country.type==='preferential') return Math.min(base,15);
+  if(country.type==='usmca') return 15;        // effective floor on non-US content
+  return base;                                  // standard partners pay full rate
+}
+function effTariff(country){
+  const o=state.countries[country.id];
+  return o.tariff===null ? autoTariff(country) : o.tariff;
+}
+
+//---------------------------------------------------------------- calculation
+function compute(country){
+  const o=state.countries[country.id];
+  const base = state.spot*(1+o.premium/100);      // USD/t after regional premium
+  const qty  = state.quantity;
+  const material = base*qty;
+  const freight  = o.freight*qty;
+  const tariff   = material*effTariff(country)/100;
+  const fees     = material*state.feesPct/100;
+  const landedUSD= material+freight+tariff+fees;
+  const rate     = state.fx[state.currency]||1;
+  return {
+    country, tariffPct:effTariff(country),
+    material:material*rate, freight:freight*rate, tariff:tariff*rate, fees:fees*rate,
+    landed:landedUSD*rate, perTonne:landedUSD*rate/qty,
+  };
+}
+
+//---------------------------------------------------------------- formatting
+function fmt(v){
+  try{
+    return new Intl.NumberFormat('en-US',{style:'currency',currency:state.currency,
+      maximumFractionDigits:0, minimumFractionDigits:0}).format(v);
+  }catch(e){ return state.currency+' '+Math.round(v).toLocaleString(); }
+}
+const sym=()=>{ try{return (0).toLocaleString('en-US',{style:'currency',currency:state.currency}).replace(/[\d.,\s]/g,'');}catch(e){return '';} };
+
+//---------------------------------------------------------------- render: results
+function renderRows(){
+  const list = COUNTRIES.filter(c=>state.countries[c.id].include).map(compute)
+                        .sort((a,b)=>a.landed-b.landed);
+  const cheapest = list.length?list[0].landed:0;
+  const rows=document.getElementById('rows');
+  document.getElementById('rankNote').textContent =
+    list.length+' source'+(list.length===1?'':'s')+' · '+state.quantity+' t · normalized to '+state.currency;
+
+  if(!list.length){ rows.innerHTML='<div class="row" style="text-align:center;color:var(--steel)">No source countries selected — enable some in Assumptions below.</div>'; return; }
+
+  rows.innerHTML = list.map((r,i)=>{
+    const segs=[['material',r.material],['tariff',r.tariff],['freight',r.freight],['fees',r.fees]];
+    const stack = segs.map(([k,v])=>`<span class="seg-${k}" style="width:${(v/r.landed*100).toFixed(2)}%"></span>`).join('');
+    const diff = r.landed-cheapest;
+    const deltaHtml = i===0
+      ? `<div class="delta flat">▼ best landed cost</div>`
+      : `<div class="delta up">+${fmt(diff)} · +${(diff/cheapest*100).toFixed(1)}%</div>`;
+    const tBadge = r.tariffPct>0 ? `<span class="badge tariff">${r.tariffPct}% tariff</span>` : '';
+    const bestBadge = i===0 ? `<span class="badge">cheapest</span>` : '';
+    return `<div class="row ${i===0?'best':''}">
+      <div class="row-top">
+        <div class="rank mono">${String(i+1).padStart(2,'0')}</div>
+        <div class="country">
+          <div class="name">${r.country.name} ${bestBadge}${tBadge}</div>
+          <div class="meta">freight ${sym()}${r.country.freight}/t · premium ${state.countries[r.country.id].premium}%</div>
+        </div>
+        <div class="figures">
+          <div class="total mono">${fmt(r.landed)}</div>
+          <div class="per mono">${fmt(r.perTonne)} / tonne</div>
+          ${deltaHtml}
+        </div>
+      </div>
+      <div class="stack" role="img" aria-label="cost composition">${stack}</div>
+      <div class="legend">
+        <span><i class="dot seg-material"></i>Material ${fmt(r.material)}</span>
+        <span><i class="dot seg-tariff"></i>Tariff ${fmt(r.tariff)}</span>
+        <span><i class="dot seg-freight"></i>Freight ${fmt(r.freight)}</span>
+        <span><i class="dot seg-fees"></i>Fees ${fmt(r.fees)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+//---------------------------------------------------------------- render: header spot
+function renderSpot(){
+  document.getElementById('spotDisplay').textContent='$'+state.spot.toLocaleString();
+  document.getElementById('spotSub').textContent=MINERALS[state.mineral].name+' · USD / tonne';
+  document.getElementById('spotInput').value=state.spot;
+}
+
+//---------------------------------------------------------------- render: country table
+function renderCountryTable(){
+  const tb=document.getElementById('countryTable');
+  tb.innerHTML=COUNTRIES.map(c=>{
+    const o=state.countries[c.id];
+    const auto=autoTariff(c);
+    const tariffVal = o.tariff===null?auto:o.tariff;
+    const isDest = c.id===state.destination;
+    return `<tr class="${o.include?'':'off'}" data-id="${c.id}">
+      <td><input type="checkbox" class="toggle" data-id="${c.id}" ${o.include?'checked':''} aria-label="include ${c.name}"></td>
+      <td>${c.name}${isDest?' <span style="color:var(--green);font-size:11px">· domestic</span>':''}</td>
+      <td class="num"><input type="number" class="mono" data-id="${c.id}" data-k="premium" value="${o.premium}" step="0.5"></td>
+      <td class="num"><input type="number" class="mono" data-id="${c.id}" data-k="tariff" value="${tariffVal}" step="1" title="auto: ${auto}%"></td>
+      <td class="num"><input type="number" class="mono" data-id="${c.id}" data-k="freight" value="${o.freight}" step="1"></td>
+    </tr>`;
+  }).join('');
+}
+
+//---------------------------------------------------------------- render: fx
+function renderFx(){
+  const g=document.getElementById('fxGrid');
+  g.innerHTML=Object.keys(state.fx).map(k=>`
+    <div class="fx-cell field">
+      <label>${k}</label>
+      <input type="number" class="mono" data-fx="${k}" value="${state.fx[k]}" step="${state.fx[k]>50?1:0.01}">
+    </div>`).join('');
+}
+
+function renderAll(){ renderSpot(); renderCountryTable(); renderRows(); }
+
+//---------------------------------------------------------------- populate selects
+function fillSelect(id,obj,keyName){
+  const el=document.getElementById(id);
+  el.innerHTML=Object.keys(obj).map(k=>`<option value="${k}">${keyName?obj[k][keyName]:obj[k]}</option>`).join('');
+}
+fillSelect('mineral',MINERALS,'name');
+fillSelect('form',FORMS,'name');
+document.getElementById('destination').innerHTML=COUNTRIES.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+document.getElementById('currency').innerHTML=Object.keys(FX).map(k=>`<option value="${k}">${k}</option>`).join('');
+
+document.getElementById('mineral').value=state.mineral;
+document.getElementById('form').value=state.form;
+document.getElementById('destination').value=state.destination;
+document.getElementById('currency').value=state.currency;
+
+//---------------------------------------------------------------- events
+document.getElementById('mineral').addEventListener('change',e=>{
+  state.mineral=e.target.value; state.spot=MINERALS[state.mineral].spot; renderAll();
+});
+document.getElementById('form').addEventListener('change',e=>{
+  state.form=e.target.value;
+  // reset per-country tariff overrides so auto-rates apply for the new form
+  COUNTRIES.forEach(c=>state.countries[c.id].tariff=null);
+  renderAll();
+});
+document.getElementById('destination').addEventListener('change',e=>{
+  state.destination=e.target.value;
+  COUNTRIES.forEach(c=>state.countries[c.id].tariff=null);
+  renderAll();
+});
+document.getElementById('currency').addEventListener('change',e=>{state.currency=e.target.value; renderRows();});
+document.getElementById('quantity').addEventListener('input',e=>{state.quantity=Math.max(0.1,+e.target.value||0); renderRows();});
+document.getElementById('feesInput').addEventListener('input',e=>{state.feesPct=Math.max(0,+e.target.value||0); renderRows();});
+document.getElementById('spotInput').addEventListener('input',e=>{state.spot=Math.max(0,+e.target.value||0); renderSpot(); renderRows();});
+
+// country table — delegated
+document.getElementById('countryTable').addEventListener('input',e=>{
+  const id=e.target.dataset.id, k=e.target.dataset.k;
+  if(e.target.classList.contains('toggle')){
+    state.countries[id].include=e.target.checked;
+    e.target.closest('tr').classList.toggle('off',!e.target.checked);
+    renderRows(); return;
+  }
+  if(!id||!k) return;
+  const v=Math.max(0,+e.target.value||0);
+  state.countries[id][k]= (k==='tariff')? v : v;
+  renderRows();
+});
+// fx — delegated
+document.getElementById('fxGrid').addEventListener('input',e=>{
+  const k=e.target.dataset.fx; if(!k) return;
+  state.fx[k]=Math.max(0,+e.target.value||0); renderRows();
+});
+
+//---------------------------------------------------------------- init
+renderFx();
+renderAll();
+</script>
+</body>
+</html>
